@@ -17,14 +17,25 @@ import hoomd
 # Every \a period time steps, particle velocities are modified so that they are all zero
 #
 class quincke_force(hoomd.md.force._force):
-    ## Initialize the velocity zeroer
+    ## Implement quincke forces
     #
-    # \param period Velocities will be zeroed every \a period time steps
+    #
     #
     # \b Examples:
     # \code
-    # example_plugin.update.example()
-    # zeroer = example_plugin.update.example(period=10)
+    # import hoomd, hoomd.quincke
+    # qactive = hoomd.quincke.compute.quincke_force(
+    #    group = hoomd.group.all(), nlist = hoomd.md.nlist.cell(), 
+    #    Dpassive = 0.01, 
+    #    Dactive = 1,
+    #    Ee = 1,
+    #    Ecut = 1,
+    #    rcut = 5,
+    #    sigma21 = -0.5,
+    #    H = H,
+    #    epsilon = 1,
+    #    seed = 2
+    #    )
     # \endcode
     #
     # \a period can be a function: see \ref variable_period_docs for details

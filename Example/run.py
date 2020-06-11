@@ -81,14 +81,15 @@ qactive = hoomd.quincke.compute.quincke_force(
     nlist = nl2,
     Dpassive = 0.0,
     Dactive = 0.1,
-    Ee = 0.5,
-    Ecut = 1,
+    Ee = 2,
+    Ecut = 4,
     rcut = 5,
     sigma21 = -0.5,
     H = H,
     epsilon = 1,
     seed = 2
     )
+# qactive.disable()
 
 
 # place a wall if confinement in z direction is required

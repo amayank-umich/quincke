@@ -11,12 +11,13 @@ from hoomd.quincke import _quincke
 # Next, since we are extending an updater, we need to bring in the base class updater and some other parts from
 # hoomd_script
 import hoomd
+from hoomd.md.pair import pair
 
 ## Zeroes all particle velocities
 #
 # Every \a period time steps, particle velocities are modified so that they are all zero
 #
-class quincke_force(hoomd.md.force._force):
+class quincke_force(pair):
     ## Implement quincke forces
     #
     #
@@ -43,19 +44,24 @@ class quincke_force(hoomd.md.force._force):
         hoomd.util.print_status_line();
 
         # initialize base class
-        hoomd.md.force._force.__init__(self, name);
+        # hoomd.md.force._force.__init__(self, name);
+        pair.__init__(self, rcut, nlist, name);
 
+        # # setup the neighbor list
+        # self.nlist = nlist
+        # self.nlist.subscribe(lambda:rcut)
+        # self.nlist.update_rcut()
 
         # initialize the reflected c++ class
         if not hoomd.context.exec_conf.isCUDAEnabled():
             self.cpp_force = _quincke.QuinckeForceCompute(hoomd.context.current.system_definition, nlist.cpp_nlist, group.cpp_group, Dpassive, Dactive, Ee, Ecut, rcut, sigma21, H, epsilon, seed);
         else:
-            nlist.cpp_nlist.setStorageMode(_md.NeighborList.storageMode.full);
+            self.nlist.cpp_nlist.setStorageMode(_md.NeighborList.storageMode.full);
             self.cpp_force = _quincke.QuinckeForceComputeGPU(hoomd.context.current.system_definition, nlist.cpp_nlist, group.cpp_group, Dpassive, Dactive, Ee, Ecut, rcut, sigma21, H, epsilon, seed);
 
         # store metadata
-        self.metadata_fields = ['nlist', 'group', 'Dpassive', 'Dactive', 'Ee', 'Ecut', 'rcut', 'sigma21', 'H', 'epsilon', 'seed']
-        self.nlist = nlist
+        self.metadata_fields = ['group', 'Dpassive', 'Dactive', 'Ee', 'Ecut', 'rcut', 'sigma21', 'H', 'epsilon', 'seed']
+        
         self.group = group
         self.Dpassive = Dpassive
         self.Dactive = Dactive

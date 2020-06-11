@@ -133,6 +133,7 @@ void QuinckeForceCompute::setForces(unsigned int timestep)
         // loop over all of the neighbors of this particle
         const unsigned int myHead = h_head_list.data[idx];
         const unsigned int size = (unsigned int)h_n_neigh.data[idx];
+        
         for (unsigned int k = 0; k < size; k++)
             {
             // access the index of this neighbor (MEM TRANSFER: 1 scalar)
@@ -146,18 +147,72 @@ void QuinckeForceCompute::setForces(unsigned int timestep)
             // apply periodic boundary conditions
             rij = box.minImage(rij);
 
-            Scalar rij_mag = sqrt(dot(rij,rij));
-            Scalar rij_inv5 = Scalar(1.0) / (rij_mag * rij_mag * rij_mag * rij_mag * rij_mag);
-            Scalar rij_inv2 = Scalar(1.0) / (rij_mag * rij_mag);
+            // add forces only if neighbor is within rcut distance
+            Scalar rij_mag = slow::sqrt(dot(rij,rij));
+            if (rij_mag < m_rcut)
+                {
+                Scalar rij_inv5 = Scalar(1.0) / (rij_mag * rij_mag * rij_mag * rij_mag * rij_mag);
+                Scalar rij_inv2 = Scalar(1.0) / (rij_mag * rij_mag);
 
-            Fi_x += rij_inv5 * rij.x * (3 - 15 * rij.z * rij.z * rij_inv2);
-            Fi_y += rij_inv5 * rij.y * (3 - 15 * rij.z * rij.z * rij_inv2);
-            Fi_z += rij_inv5 * rij.z * (6 + 3 - 15 * rij.z * rij.z * rij_inv2);
+                Fi_x += rij_inv5 * rij.x * (3 - 15 * rij.z * rij.z * rij_inv2);
+                Fi_y += rij_inv5 * rij.y * (3 - 15 * rij.z * rij.z * rij_inv2);
+                Fi_z += rij_inv5 * rij.z * (6 + 3 - 15 * rij.z * rij.z * rij_inv2);
 
-            Ei_x += 3 * rij_inv5 * rij.x * rij.z;
-            Ei_y += 3 * rij_inv5 * rij.y * rij.z;
-            Ei_z += 3 * rij_inv5 * rij.z * rij.z - rij_inv2/rij_mag;
+                Ei_x += 3 * rij_inv5 * rij.x * rij.z;
+                Ei_y += 3 * rij_inv5 * rij.y * rij.z;
+                Ei_z += 3 * rij_inv5 * rij.z * rij.z - rij_inv2/rij_mag;
+                
 
+                // add forces for the images of this neighbor in z axis
+                Scalar rjj_img;
+                Scalar3 rij_img;
+                Scalar rij_mag_img;
+
+                Scalar sign = Scalar(1.0); // takes care of the inversion of reflected dipoles
+                for (int zimage = 1; zimage < 1+m_rcut/m_H; zimage++)
+                    {   
+
+                        rjj_img = 2 * ( m_H/Scalar(2.0) - pi.z - rij.z );
+                        rij_img = make_scalar3(rij.x, rij.y, rij.z + rjj_img);
+                        rij_mag_img = slow::sqrt(dot(rij_img,rij_img));
+                        if (rij_mag_img < m_rcut)
+                            {
+                            Scalar rij_inv5 = Scalar(1.0) / (rij_mag_img * rij_mag_img * rij_mag_img * rij_mag_img * rij_mag_img);
+                            Scalar rij_inv2 = Scalar(1.0) / (rij_mag_img * rij_mag_img);
+
+                            sign *= -1;
+                            Fi_x += sign* rij_inv5 * rij_img.x * (3 - 15 * rij_img.z * rij_img.z * rij_inv2);
+                            Fi_y += sign* rij_inv5 * rij_img.y * (3 - 15 * rij_img.z * rij_img.z * rij_inv2);
+                            Fi_z += sign* rij_inv5 * rij_img.z * (6 + 3 - 15 * rij.z * rij_img.z * rij_inv2);
+                            
+                            Ei_x += sign* 3 * rij_inv5 * rij_img.x * rij_img.z;
+                            Ei_y += sign* 3 * rij_inv5 * rij_img.y * rij_img.z;
+                            Ei_z += sign* 3 * rij_inv5 * rij_img.z * rij_img.z - rij_inv2/rij_mag_img;
+                            }
+                    }
+                // add forces for the images of this neighbor in -z axis
+                sign = Scalar(1.0); // takes care of the inversion of reflected dipoles
+                for (int zimage = -1; zimage > -1-m_rcut/m_H; zimage--)
+                    {   
+                        rjj_img = 2 * ( m_H/Scalar(2.0) + pi.z + rij.z );
+                        rij_img = make_scalar3(rij.x, rij.y, rij.z - rjj_img);
+                        rij_mag_img = slow::sqrt(dot(rij_img,rij_img));
+                        if (rij_mag_img < m_rcut)
+                            {
+                            Scalar rij_inv5 = Scalar(1.0) / (rij_mag_img * rij_mag_img * rij_mag_img * rij_mag_img * rij_mag_img);
+                            Scalar rij_inv2 = Scalar(1.0) / (rij_mag_img * rij_mag_img);
+
+                            sign *= -1;
+                            Fi_x += sign* rij_inv5 * rij_img.x * (3 - 15 * rij_img.z * rij_img.z * rij_inv2);
+                            Fi_y += sign* rij_inv5 * rij_img.y * (3 - 15 * rij_img.z * rij_img.z * rij_inv2);
+                            Fi_z += sign* rij_inv5 * rij_img.z * (6 + 3 - 15 * rij.z * rij_img.z * rij_inv2);
+                            
+                            Ei_x += sign* 3 * rij_inv5 * rij_img.x * rij_img.z;
+                            Ei_y += sign* 3 * rij_inv5 * rij_img.y * rij_img.z;
+                            Ei_z += sign* 3 * rij_inv5 * rij_img.z * rij_img.z - rij_inv2/rij_mag_img;
+                            }
+                    }
+                }
             }
         
         Scalar Ei_mag = m_Ee * sqrt( (ai_cube * m_sigma21*Ei_x) * (ai_cube * m_sigma21*Ei_x) + 

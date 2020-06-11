@@ -130,6 +130,59 @@ void QuinckeForceCompute::setForces(unsigned int timestep)
         Scalar Ei_y = Scalar(0.0);
         Scalar Ei_z = Scalar(0.0);
 
+
+
+
+        // add forces for the images of i
+        Scalar3 rii_img;
+        Scalar rii_mag_img;
+        Scalar rii_img_zplus = Scalar(0.0);
+        Scalar rii_img_zminus = Scalar(0.0);
+        Scalar x = m_H / Scalar(2.0) - pi.z ;
+        Scalar sign = Scalar(1.0); // takes care of the inversion of reflected dipoles
+        for (unsigned int zimage = 1; zimage < 1+m_rcut/m_H; zimage++)
+            {   
+                // add images along +z axis
+                sign *= -1;
+                rii_img_zplus += -sign * Scalar(2.0)*x + m_H + sign * m_H;
+                rii_img = make_scalar3(0, 0, -rii_img_zplus);
+                rii_mag_img = rii_img_zplus;
+                if (rii_mag_img < m_rcut)
+                    {
+                    Scalar rii_inv5 = Scalar(1.0) / (rii_mag_img * rii_mag_img * rii_mag_img * rii_mag_img * rii_mag_img);
+                    Scalar rii_inv2 = Scalar(1.0) / (rii_mag_img * rii_mag_img);
+
+                    Fi_x += sign* rii_inv5 * rii_img.x * (3 - 15 * rii_img.z * rii_img.z * rii_inv2);
+                    Fi_y += sign* rii_inv5 * rii_img.y * (3 - 15 * rii_img.z * rii_img.z * rii_inv2);
+                    Fi_z += sign* rii_inv5 * rii_img.z * (6 + 3 - 15 * rii_img.z * rii_img.z * rii_inv2);
+                    
+                    Ei_x += sign* 3 * rii_inv5 * rii_img.x * rii_img.z;
+                    Ei_y += sign* 3 * rii_inv5 * rii_img.y * rii_img.z;
+                    Ei_z += sign* 3 * rii_inv5 * rii_img.z * rii_img.z - rii_inv2/rii_mag_img;
+                    }
+            
+                // add images along -z axis
+                rii_img_zminus += sign * Scalar(2.0)*x + m_H - sign * m_H;
+                rii_img = make_scalar3(0, 0, +rii_img_zplus);
+                rii_mag_img = rii_img_zplus;
+                if (rii_mag_img < m_rcut)
+                    {
+                    Scalar rii_inv5 = Scalar(1.0) / (rii_mag_img * rii_mag_img * rii_mag_img * rii_mag_img * rii_mag_img);
+                    Scalar rii_inv2 = Scalar(1.0) / (rii_mag_img * rii_mag_img);
+
+                    Fi_x += sign* rii_inv5 * rii_img.x * (3 - 15 * rii_img.z * rii_img.z * rii_inv2);
+                    Fi_y += sign* rii_inv5 * rii_img.y * (3 - 15 * rii_img.z * rii_img.z * rii_inv2);
+                    Fi_z += sign* rii_inv5 * rii_img.z * (6 + 3 - 15 * rii_img.z * rii_img.z * rii_inv2);
+                    
+                    Ei_x += sign* 3 * rii_inv5 * rii_img.x * rii_img.z;
+                    Ei_y += sign* 3 * rii_inv5 * rii_img.y * rii_img.z;
+                    Ei_z += sign* 3 * rii_inv5 * rii_img.z * rii_img.z - rii_inv2/rii_mag_img;
+                    }
+            }
+
+
+
+
         // loop over all of the neighbors of this particle
         const unsigned int myHead = h_head_list.data[idx];
         const unsigned int size = (unsigned int)h_n_neigh.data[idx];
@@ -166,7 +219,6 @@ void QuinckeForceCompute::setForces(unsigned int timestep)
                 // add forces for the images
                 Scalar3 rij_img;
                 Scalar rij_mag_img;
-
                 Scalar rjj_img_zplus = Scalar(0.0);
                 Scalar rjj_img_zminus = Scalar(0.0);
                 Scalar x = m_H / Scalar(2.0) - pi.z + rij.z ;
@@ -185,7 +237,7 @@ void QuinckeForceCompute::setForces(unsigned int timestep)
 
                             Fi_x += sign* rij_inv5 * rij_img.x * (3 - 15 * rij_img.z * rij_img.z * rij_inv2);
                             Fi_y += sign* rij_inv5 * rij_img.y * (3 - 15 * rij_img.z * rij_img.z * rij_inv2);
-                            Fi_z += sign* rij_inv5 * rij_img.z * (6 + 3 - 15 * rij.z * rij_img.z * rij_inv2);
+                            Fi_z += sign* rij_inv5 * rij_img.z * (6 + 3 - 15 * rij_img.z * rij_img.z * rij_inv2);
                             
                             Ei_x += sign* 3 * rij_inv5 * rij_img.x * rij_img.z;
                             Ei_y += sign* 3 * rij_inv5 * rij_img.y * rij_img.z;
@@ -203,7 +255,7 @@ void QuinckeForceCompute::setForces(unsigned int timestep)
 
                             Fi_x += sign* rij_inv5 * rij_img.x * (3 - 15 * rij_img.z * rij_img.z * rij_inv2);
                             Fi_y += sign* rij_inv5 * rij_img.y * (3 - 15 * rij_img.z * rij_img.z * rij_inv2);
-                            Fi_z += sign* rij_inv5 * rij_img.z * (6 + 3 - 15 * rij.z * rij_img.z * rij_inv2);
+                            Fi_z += sign* rij_inv5 * rij_img.z * (6 + 3 - 15 * rij_img.z * rij_img.z * rij_inv2);
                             
                             Ei_x += sign* 3 * rij_inv5 * rij_img.x * rij_img.z;
                             Ei_y += sign* 3 * rij_inv5 * rij_img.y * rij_img.z;

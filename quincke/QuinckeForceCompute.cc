@@ -163,24 +163,26 @@ void QuinckeForceCompute::setForces(unsigned int timestep)
                 Ei_z += 3 * rij_inv5 * rij.z * rij.z - rij_inv2/rij_mag;
                 
 
-                // add forces for the images of this neighbor in z axis
-                Scalar rjj_img;
+                // add forces for the images
                 Scalar3 rij_img;
                 Scalar rij_mag_img;
 
+                Scalar rjj_img_zplus = Scalar(0.0);
+                Scalar rjj_img_zminus = Scalar(0.0);
+                Scalar x = m_H / Scalar(2.0) - pi.z + rij.z ;
                 Scalar sign = Scalar(1.0); // takes care of the inversion of reflected dipoles
-                for (int zimage = 1; zimage < 1+m_rcut/m_H; zimage++)
+                for (unsigned int zimage = 1; zimage < 1+m_rcut/m_H; zimage++)
                     {   
-
-                        rjj_img = 2 * ( m_H/Scalar(2.0) - pi.z - rij.z );
-                        rij_img = make_scalar3(rij.x, rij.y, rij.z + rjj_img);
+                        // add images along +z axis
+                        sign *= -1;
+                        rjj_img_zplus += -sign * Scalar(2.0)*x + m_H + sign * m_H;
+                        rij_img = make_scalar3(rij.x, rij.y, rij.z - rjj_img_zplus);
                         rij_mag_img = slow::sqrt(dot(rij_img,rij_img));
                         if (rij_mag_img < m_rcut)
                             {
                             Scalar rij_inv5 = Scalar(1.0) / (rij_mag_img * rij_mag_img * rij_mag_img * rij_mag_img * rij_mag_img);
                             Scalar rij_inv2 = Scalar(1.0) / (rij_mag_img * rij_mag_img);
 
-                            sign *= -1;
                             Fi_x += sign* rij_inv5 * rij_img.x * (3 - 15 * rij_img.z * rij_img.z * rij_inv2);
                             Fi_y += sign* rij_inv5 * rij_img.y * (3 - 15 * rij_img.z * rij_img.z * rij_inv2);
                             Fi_z += sign* rij_inv5 * rij_img.z * (6 + 3 - 15 * rij.z * rij_img.z * rij_inv2);
@@ -189,20 +191,16 @@ void QuinckeForceCompute::setForces(unsigned int timestep)
                             Ei_y += sign* 3 * rij_inv5 * rij_img.y * rij_img.z;
                             Ei_z += sign* 3 * rij_inv5 * rij_img.z * rij_img.z - rij_inv2/rij_mag_img;
                             }
-                    }
-                // add forces for the images of this neighbor in -z axis
-                sign = Scalar(1.0); // takes care of the inversion of reflected dipoles
-                for (int zimage = -1; zimage > -1-m_rcut/m_H; zimage--)
-                    {   
-                        rjj_img = 2 * ( m_H/Scalar(2.0) + pi.z + rij.z );
-                        rij_img = make_scalar3(rij.x, rij.y, rij.z - rjj_img);
+                    
+                        // add images along -z axis
+                        rjj_img_zminus += sign * Scalar(2.0)*x + m_H - sign * m_H;
+                        rij_img = make_scalar3(rij.x, rij.y, rij.z + rjj_img_zminus);
                         rij_mag_img = slow::sqrt(dot(rij_img,rij_img));
                         if (rij_mag_img < m_rcut)
                             {
                             Scalar rij_inv5 = Scalar(1.0) / (rij_mag_img * rij_mag_img * rij_mag_img * rij_mag_img * rij_mag_img);
                             Scalar rij_inv2 = Scalar(1.0) / (rij_mag_img * rij_mag_img);
 
-                            sign *= -1;
                             Fi_x += sign* rij_inv5 * rij_img.x * (3 - 15 * rij_img.z * rij_img.z * rij_inv2);
                             Fi_y += sign* rij_inv5 * rij_img.y * (3 - 15 * rij_img.z * rij_img.z * rij_inv2);
                             Fi_z += sign* rij_inv5 * rij_img.z * (6 + 3 - 15 * rij.z * rij_img.z * rij_inv2);
@@ -215,6 +213,8 @@ void QuinckeForceCompute::setForces(unsigned int timestep)
                 }
             }
         
+        // std::cout<< Fi_x << "**" << Fi_y << "**" << Fi_z << "**";
+
         Scalar Ei_mag = m_Ee * sqrt( (ai_cube * m_sigma21*Ei_x) * (ai_cube * m_sigma21*Ei_x) + 
                                      (ai_cube * m_sigma21*Ei_y) * (ai_cube * m_sigma21*Ei_y) + 
                                      (1 + ai_cube * m_sigma21*Ei_z) * (1 + ai_cube * m_sigma21*Ei_z));
